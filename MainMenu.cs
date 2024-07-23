@@ -30,7 +30,8 @@ public class MainMenu : MonoBehaviourPunCallbacks{
         /*
             It's important to make sure to use 
             PhotonNetwork.LoadLevel(); 
-            when moving players over the network.
+            when moving players over the network
+            instead of the unity scene manager
         */
     }
 }
