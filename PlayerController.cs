@@ -13,16 +13,16 @@ public class PlayerController : MonoBehaviour{
     private float horizontalInput; //The horizontal input value
     private float verticalInput; //The vertical input value
     public Animator myAnim; //Reference to the animator
-    PhotonView playervView;
+    PhotonView playerView;
 
     void Start()    {
         rb = gameObject.GetComponent<Rigidbody>(); // Get the Rigidbody component
-        playervView = GetComponent<PhotonView>();
+        playerView = GetComponent<PhotonView>();
 
     }
 
     void Update()    {
-        if (playervView.IsMine)
+        if (playerView.IsMine)
         {
             RaycastHit hit;
             Vector3 castPosition = transform.position;

@@ -7,6 +7,7 @@ public class EnemyScript : MonoBehaviour
     PlayerController[] players;
     PlayerController nearestPlayer;
     public float speed;
+    public float damageAmount = 100f;
 
     private void Start()
     {
@@ -38,4 +39,16 @@ public class EnemyScript : MonoBehaviour
             transform.position += directionToPlayer * speed * Time.deltaTime;
         }
     }
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Player")) // Check if the collider belongs to the player
+        {
+            // Get the player's health system and apply damage
+            PlayerHealth playerHealth = other.GetComponent<PlayerHealth>();
+            if (playerHealth != null)
+            {
+                playerHealth.TakeDamage(damageAmount);
+            }
+        }
+    }    
 }
