@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Photon.Pun;
 
 public class EnemyScript : MonoBehaviour
 {
@@ -17,7 +18,7 @@ public class EnemyScript : MonoBehaviour
     private void Update()
     {
         float minDistance = float.MaxValue; // Initialize with a large value
-
+        
         foreach (var player in players)
         {
             float distance = Vector3.Distance(transform.position, player.transform.position);
@@ -39,16 +40,18 @@ public class EnemyScript : MonoBehaviour
             transform.position += directionToPlayer * speed * Time.deltaTime;
         }
     }
-    private void OnTriggerEnter(Collider other)
+    
+    public void DestroyOnNetwork()
     {
-        if (other.CompareTag("Player")) // Check if the collider belongs to the player
-        {
-            // Get the player's health system and apply damage
-            PlayerHealth playerHealth = other.GetComponent<PlayerHealth>();
-            if (playerHealth != null)
-            {
-                playerHealth.TakeDamage(damageAmount);
-            }
-        }
-    }    
+        // Call this method when you want to destroy the object
+        // It will trigger an RPC to notify all clients to destroy it
+        GetComponent<PhotonView>().RPC("NetworkDestroy", RpcTarget.AllBuffered);
+    }
+
+    [PunRPC]
+    private void NetworkDestroy()
+    {
+        // Actual destruction logic here
+        PhotonNetwork.Destroy(gameObject);
+    }
 }

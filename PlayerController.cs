@@ -13,15 +13,44 @@ public class PlayerController : MonoBehaviour{
     private float horizontalInput; //The horizontal input value
     private float verticalInput; //The vertical input value
     public Animator myAnim; //Reference to the animator
-    PhotonView playerView;
+    PhotonView playerView; // Reference to the PhotonView component
 
-    void Start()    {
+    public int playerNumber; // The player number
+
+    //Hold a reference to the health manager script
+    public HealthManager healthManager;
+
+    void Start()
+    {
+        //If the masterclient is the player set player number to 1
+        if (PhotonNetwork.IsMasterClient)
+        {
+            playerNumber = 1;
+            Debug.Log("Player number: " + playerNumber);
+        }
+        else //if the client is not the master then check how many players are in the room and set the player number accordingly
+        {
+            playerNumber = PhotonNetwork.CurrentRoom.PlayerCount;
+            Debug.Log("Player number: " + playerNumber);
+        }
+        
         rb = gameObject.GetComponent<Rigidbody>(); // Get the Rigidbody component
-        playerView = GetComponent<PhotonView>();
-
+        playerView = GetComponent<PhotonView>(); // Get the PhotonView component
+        //get the healthmanager object
+        healthManager = GameObject.Find("Health").GetComponent<HealthManager>();
+        //If the masterclient is the player set player number to 1
+        if (PhotonNetwork.IsMasterClient)
+        {
+            playerNumber = 1;
+        }
+        else //if the client is not the master then check how many players are in the room and set the player number accordingly
+        {
+            playerNumber = PhotonNetwork.CurrentRoom.PlayerCount;
+            Debug.Log("Player number: " + playerNumber);
+        }
     }
 
-    void Update()    {
+    void Update(){
         if (playerView.IsMine)
         {
             RaycastHit hit;
@@ -29,7 +58,7 @@ public class PlayerController : MonoBehaviour{
             castPosition.y += 1;
 
             // Perform a downward raycast that only detects the terrain layer
-            if (Physics.Raycast(castPosition, -transform.up, out hit, Mathf.Infinity, terrainLayer))        {
+            if (Physics.Raycast(castPosition, -transform.up, out hit, Mathf.Infinity, terrainLayer)){
                 // If it hits the terrain, move the character above
                 if (hit.collider != null)            {
                     Vector3 movePosition = transform.position;
@@ -53,10 +82,49 @@ public class PlayerController : MonoBehaviour{
             myAnim.SetFloat("moveZ", rb.velocity.z);
 
             // Update last move parameters only when there's input
-            if (horizontalInput != 0 || verticalInput != 0)        {
+            if (horizontalInput != 0 || verticalInput != 0)        
+            {
                 myAnim.SetFloat("lastMoveX", verticalInput);
                 myAnim.SetFloat("lastMoveZ", horizontalInput);
             }
         }
     }
+    private void OnTriggerEnter(Collider other)
+    {
+        if (playerView.IsMine)
+        {
+            if (other.CompareTag("Enemy")) // Check if the collider belongs to the player
+            {
+                // Call the TakeDamage RPC
+                playerView.RPC("PlayerTakeDamage", RpcTarget.All, 10, playerNumber);
+                // Destroy the player
+                //PhotonNetwork.Destroy(gameObject);
+                // Destroy other.gameObject
+                other.GetComponent<EnemyScript>().DestroyOnNetwork();
+            }
+        }
+    }
+
+    // Take damage RPC to let the health manager know that the player has taken damage
+    [PunRPC]
+    public void PlayerTakeDamage(int damage, int playerNumber) // Who and how much damage to take
+    {
+        switch (playerNumber) // Check the player number and reduce the health accordingly
+        {
+            case 1:
+                healthManager.player1Health -= damage;
+                break;
+            case 2:
+                healthManager.player2Health -= damage;
+                break;
+            case 3:
+                healthManager.player3Health -= damage;
+                break;
+            case 4:
+                healthManager.player4Health -= damage;
+                break;
+        }
+        // Call the update health text method in the health manager
+        healthManager.UpdateHealthTextRPC();
+    }   
 }
