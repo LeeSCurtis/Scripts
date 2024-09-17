@@ -1,10 +1,8 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using Photon.Pun;
+using UnityEngine.InputSystem;
 
-public class PlayerController : MonoBehaviour{
+public class PlayerController : MonoBehaviourPunCallbacks{
     public float speed; // A variable for modifying speed
     public float groundDistance; // Track the player's distance from the ground
     public LayerMask terrainLayer; // The layer mask for detecting terrain
@@ -14,59 +12,27 @@ public class PlayerController : MonoBehaviour{
     private float verticalInput; //The vertical input value
     public Animator myAnim; //Reference to the animator
     PhotonView playerView; // Reference to the PhotonView component
-
     public int playerNumber; // The player number
-
-    //Hold a reference to the health manager script
-    public HealthManager healthManager;
+    public HealthManager healthManager; //Hold a reference to the health manager script
+    private Camera myCamera; // Reference to the Camera component
+    private bool isMoving; // A boolean to check if the player is moving
 
     void Start()
     {
-        //If the masterclient is the player set player number to 1
-        if (PhotonNetwork.IsMasterClient)
+        if (photonView.IsMine)
         {
-            playerNumber = 1;
-            Debug.Log("Player number: " + playerNumber);
-        }
-        else //if the client is not the master then check how many players are in the room and set the player number accordingly
-        {
-            playerNumber = PhotonNetwork.CurrentRoom.PlayerCount;
-            Debug.Log("Player number: " + playerNumber);
-        }
-        
-        rb = gameObject.GetComponent<Rigidbody>(); // Get the Rigidbody component
-        playerView = GetComponent<PhotonView>(); // Get the PhotonView component
-        //get the healthmanager object
-        healthManager = GameObject.Find("Health").GetComponent<HealthManager>();
-        //If the masterclient is the player set player number to 1
-        if (PhotonNetwork.IsMasterClient)
-        {
-            playerNumber = 1;
-        }
-        else //if the client is not the master then check how many players are in the room and set the player number accordingly
-        {
-            playerNumber = PhotonNetwork.CurrentRoom.PlayerCount;
-            Debug.Log("Player number: " + playerNumber);
+            myCamera = transform.GetChild(0).GetComponent<Camera>(); // Get the Camera component as a child of the player
+            myCamera.gameObject.SetActive(true); // Set the camera to active
+            playerNumber = PhotonNetwork.CurrentRoom.PlayerCount; //Set the player number to the current player count     
+            rb = gameObject.GetComponent<Rigidbody>(); // Get the Rigidbody component
+            playerView = GetComponent<PhotonView>(); // Get the PhotonView component
+            healthManager = GameObject.Find("Health").GetComponent<HealthManager>(); //get the healthmanager object
+            sr = GetComponent<SpriteRenderer>(); // Get the SpriteRenderer component
         }
     }
-
     void Update(){
-        if (playerView.IsMine)
+        if (photonView.IsMine)
         {
-            RaycastHit hit;
-            Vector3 castPosition = transform.position;
-            castPosition.y += 1;
-
-            // Perform a downward raycast that only detects the terrain layer
-            if (Physics.Raycast(castPosition, -transform.up, out hit, Mathf.Infinity, terrainLayer)){
-                // If it hits the terrain, move the character above
-                if (hit.collider != null)            {
-                    Vector3 movePosition = transform.position;
-                    movePosition.y = hit.point.y + groundDistance;
-                    transform.position = movePosition;
-                }
-            }
-
             // Get input values
             float horizontalInput = Input.GetAxisRaw("Horizontal");
             float verticalInput = Input.GetAxisRaw("Vertical");
@@ -84,9 +50,22 @@ public class PlayerController : MonoBehaviour{
             // Update last move parameters only when there's input
             if (horizontalInput != 0 || verticalInput != 0)        
             {
+                isMoving = true;
+                // Control looking left or right
+                if (horizontalInput > 0)
+                {
+                    sr.flipX = false;
+                }else if (horizontalInput < 0)
+                {
+                    sr.flipX = true;
+                }
                 myAnim.SetFloat("lastMoveX", verticalInput);
                 myAnim.SetFloat("lastMoveZ", horizontalInput);
-            }
+            } 
+                else
+            {
+                isMoving = false;
+            } 
         }
     }
     private void OnTriggerEnter(Collider other)
@@ -95,19 +74,28 @@ public class PlayerController : MonoBehaviour{
         {
             if (other.CompareTag("Enemy")) // Check if the collider belongs to the player
             {
-                // Call the TakeDamage RPC
                 playerView.RPC("PlayerTakeDamage", RpcTarget.All, 10, playerNumber);
-                // Destroy the player
-                //PhotonNetwork.Destroy(gameObject);
-                // Destroy other.gameObject
                 other.GetComponent<EnemyScript>().DestroyOnNetwork();
             }
         }
     }
-
+    void OnFire()
+    {
+        if (playerView.IsMine)
+        {
+            // Call the TakeDamage RPC
+            playerView.RPC("PlayMeleeAnimation", RpcTarget.All, 10, playerNumber);
+        }
+    }
+    [PunRPC]
+    public void PlayMeleeAnimation(int damage, int playerNumber)
+    {
+        // Activate the trigger for the melee attack animation
+        myAnim.SetTrigger("meleeAttack");
+    }
     // Take damage RPC to let the health manager know that the player has taken damage
     [PunRPC]
-    public void PlayerTakeDamage(int damage, int playerNumber) // Who and how much damage to take
+    public void PlayerTakeDamage(int damage, int playerNumber) // How much damage and who should take the damage
     {
         switch (playerNumber) // Check the player number and reduce the health accordingly
         {
