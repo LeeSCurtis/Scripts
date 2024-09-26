@@ -16,6 +16,7 @@ public class PlayerController : MonoBehaviourPunCallbacks{
     public HealthManager healthManager; //Hold a reference to the health manager script
     private Camera myCamera; // Reference to the Camera component
     private bool isMoving; // A boolean to check if the player is moving
+    private Collider myCollider; // Reference to the Collider component
 
     void Start()
     {
@@ -23,11 +24,13 @@ public class PlayerController : MonoBehaviourPunCallbacks{
         {
             myCamera = transform.GetChild(0).GetComponent<Camera>(); // Get the Camera component as a child of the player
             myCamera.gameObject.SetActive(true); // Set the camera to active
+            myAnim = GetComponent<Animator>(); // Get the Animator component
             playerNumber = PhotonNetwork.CurrentRoom.PlayerCount; //Set the player number to the current player count     
             rb = gameObject.GetComponent<Rigidbody>(); // Get the Rigidbody component
             playerView = GetComponent<PhotonView>(); // Get the PhotonView component
             healthManager = GameObject.Find("Health").GetComponent<HealthManager>(); //get the healthmanager object
             sr = GetComponent<SpriteRenderer>(); // Get the SpriteRenderer component
+            myCollider = GetComponent<Collider>(); // Get the Collider component
         }
     }
     void Update(){
@@ -50,7 +53,8 @@ public class PlayerController : MonoBehaviourPunCallbacks{
             // Update last move parameters only when there's input
             if (horizontalInput != 0 || verticalInput != 0)        
             {
-                isMoving = true;
+                myAnim.SetBool("isMoving", true);
+                
                 // Control looking left or right
                 if (horizontalInput > 0)
                 {
@@ -64,7 +68,7 @@ public class PlayerController : MonoBehaviourPunCallbacks{
             } 
                 else
             {
-                isMoving = false;
+                myAnim.SetBool("isMoving", false);
             } 
         }
     }
@@ -77,6 +81,14 @@ public class PlayerController : MonoBehaviourPunCallbacks{
                 playerView.RPC("PlayerTakeDamage", RpcTarget.All, 10, playerNumber);
                 other.GetComponent<EnemyScript>().DestroyOnNetwork();
             }
+        }
+    }
+    // On collision with another collider of tag "player" ignore the collision
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (collision.collider.CompareTag("Player"))
+        {
+            Physics.IgnoreCollision(collision.collider, myCollider);
         }
     }
     void OnFire()
